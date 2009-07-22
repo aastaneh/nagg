@@ -25,6 +25,7 @@ When Nagios detects an outage, it calls nagg_insert to send a notification. Inst
 * If the message is a recovery to another stored in the database, both are deleted. This solves the common problem when a super-brief outage wakes you up at 3am.
 
 <br>
+
 h4. nagg_sms
 
 Next, Cron calls nagg_sms every admin-defined period (I recommend 5 minutes). It performs the following:
