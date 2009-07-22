@@ -34,6 +34,7 @@ Next, Cron calls nagg_sms every admin-defined period (I recommend 5 minutes). It
 * Continues to send messages until the database is purged
 
 <br>
+
 h4. The Result
 
 nagg on average can achieve 7 nagios notifications per SMS message, as well as ignore brief outages, which make your cell phone bill and your sleep cycle very happy.. :-)
