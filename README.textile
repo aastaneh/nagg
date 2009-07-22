@@ -142,6 +142,7 @@ h4. Test Nagios Config and Restart Daemon
 h3. Usage
 
 <br>
+
 h4. Interpreting Messages
 
 A single Nagios notification will look like this:
