@@ -1,0 +1,152 @@
+h2. nagg- a Nagios notification aggregator and SMS optimizer
+
+Amin Astaneh <aastaneh@admin.usf.edu, amin@aminastaneh.net>
+Copyright (C) 2009 University of South Florida
+
+h3. Description
+
+Nagg is a Nagios notification aggregator and SMS optimizer, composed of two perl scripts:
+
+* nagg_insert: Drop-in replacement for notify-service-by-sms plugin.
+* nagg_sms: Cronjob that actually sends the SMS messages.
+
+Nagg is useful when you want to minimize the SMS messages sent by Nagios in order to save money/ your sanity. 
+
+h3. How it Works
+
+h4. nagg_insert
+When Nagios detects an outage, it calls nagg_insert to send a notification. Instead of sending the message out immediately, nagg_insert does a few things:
+
+* The message is stored in a SQLite database to be read by nagg_sms (more on that later).
+* It compresses the message by replacing the notification type, the hostname, the time, the service, and the service state with shorter versions. 
+* If a previous notification in the database is identical to the one nagg_insert is given (except the time, of course), the time is updated and the message is not added.
+* If the message is a recovery to another stored in the database, both are deleted. This solves the common problem when a super-brief outage wakes you up at 3am.
+
+h4. nagg_sms
+
+Next, Cron calls nagg_sms every admin-defined period (I recommend 5 minutes). It performs the following:
+
+* Shoves as many Nagios notifications in the same SMS message as possible 
+* Continues to send messages until the database is purged
+
+h4. The Result
+nagg on average can achieve 7 nagios notifications per SMS message, as well as ignore brief outages, which make your cell phone bill and your sleep cycle very happy.. :-)
+
+h3. Requirements
+SQLite
+Net::SMTP
+DBD::SQLite
+
+h3. Installation instructions
+
+Move the installation directory to ~nagios, and ensure permissions:
+
+  mv nagg ~nagios/
+  chown nagios:nagios ~/nagios/nagg
+
+In that directory, create the SQLite database:
+ 
+  sqlite3 aggregator.db < nagg_schema.sql
+
+Add the cronjob with the proper options:
+
+  */5 * * * * /path/to/nagg/nagg_sms --sender_address=nagios@domain.tld --smtp_server=mail.domain.tld --dbfile=/path/to/nagg/aggregator.db
+
+Make sure your MTA knows that your Nagios server is allowed to forward SMTP!
+
+Add these notification commands to the Nagios configation, and ensure that your contacts are configured to use them:
+
+  define command{
+          command_name    notify-service-by-aggregator
+          command_line    <path to nagg>/nagg_insert SERVICE $TIMET$ $TIME$ $NOTIFICATIONTYPE$ $HOSTNAME$ $SERVICEDESC$ $SERVICESTATE$ $CONTACTPAGER$ $SERVICEOUTPUT$
+
+  }
+
+  define command{
+          command_name    notify-host-by-aggregator
+          command_line    <path to nagg>/agg_insert HOST $TIMET$ $TIME$ $NOTIFICATIONTYPE$ $HOSTNAME$ ICMP $HOSTSTATE$ $CONTACTPAGER$
+
+  }
+
+  define contact{
+        contact_name                    jblogs
+        alias                           Joe Blogs
+        service_notification_period     24x7
+        host_notification_period        24x7
+        service_notification_options    w,u,c,r,f
+        host_notification_options       d,u,r,f
+        service_notification_commands   notify-service-by-aggregator
+        host_notification_commands      notify-host-by-aggregator
+        pager                           8888675309@carrier.tld
+  }
+
+h3. Configuration
+
+h4. nagg_svc.cfg
+
+This is a tab-delimited file that nagg_insert uses to replace service names with shortened versions. Here's an example:
+
+  # nagg_svc.cfg
+  ldap    lda
+  disk    dis
+  load    lod
+  imaps   ima
+  smtp    smt
+  http    www
+  ICMP    pin
+
+h4. nagg_hosts.cfg
+
+This is a tab-delimited file that nagg_insert uses to replace hostnames with shortened versions. Here's an example:
+
+  # nagg_hosts.cfg
+  
+  # If you have a bunch of hostnames with a similar prefix, you can shorten them.
+  machine	mach
+  switch	sw
+
+Remember, every little config option counts. The more that you can compress, the more messages you can send at once.
+
+
+h4. Test Nagios Config and Restart Daemon
+  nagios -v /etc/nagios/nagios.cfg
+  /etc/init.d/nagios reload
+
+h3. Usage
+
+h4. Interpreting Messages
+
+A single Nagios notification will look like this:
+<NOTIFICATION TYPE> : <24-HOUR TIME> : <HOST/SERVICE> : <SERVICE STATUS(/OPTIONAL DATA)> 
+
+The notification type makes it easy to find out whether or not a message is a problem, recovery, or flapping.
+
+|_. PROBLEM|v|
+|_. RECOVERY|/\|
+|_. FLAPPINGSTART|F|
+|_. FLAPPINGSTOP|f|
+|_. ACKNOWLEDGEMENT|A|
+
+A time (3:34 PM) will display as '''1534'''.
+
+The service status is similar to notification type, such that we use one-character codes:
+
+|_. OK|O|
+|_. WARNING|W|
+|_. CRITICAL|C| 
+|_. UNKNOWN|?|
+|_. UP|U|
+|_. DOWN|D|
+|_. UNREACHABLE|X|
+
+
+h3. Next heading will obviously be H3
+
+Tables are cool when used for tabular data.
+
+|_. Name|_. Age|_. Height|
+|Tom|29|5'9"|
+|Chris|27|6'0"|
+|Jimmy|93|3'6"|
+
+Optional data is still in development. The idea is to stick a temperature reading at the end of a message, for example.

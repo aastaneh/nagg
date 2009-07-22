@@ -1,0 +1,162 @@
+#!/usr/bin/perl -w
+#
+# Name:         nagg_insert
+#
+# Purpose:      Nagios Plugin for SMS Aggregator
+#
+# Comments:     "Because Not Everybody Has an Unlimited Data Plan"
+#               
+# Author:      Amin Astaneh (aastaneh@admin.usf.edu)
+#
+# License Information
+#
+# Copyright (C) 2009 University of South Florida
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+use strict;
+use DBI;
+
+my $dbfile = "aggregator.db";
+my $svcconf = "agg_svc.cfg";
+my $hostconf = "agg_hosts.cfg";
+my $dbh = DBI->connect( "dbi:SQLite:$dbfile" ) || die "Cannot connect: $DBI::errstr";
+
+my $numargs = $#ARGV +1;
+#if ($numargs != 7){i
+#	die("Usage: $0 time_t time notification_type hostname service hoststate email\n");
+#}
+
+open(IN, "<$svcconf") or die "Where is my aggregator service config file?\n";
+my(@regexen, @tmp);
+while (<IN>) {
+	next if $_ =~ m/^(#|[\s]+).*$/;
+	@tmp = split(/\t/, $_);
+	push @regexen, [ @tmp ];
+}
+close(IN);
+
+open(IN, "<$hostconf") or die "Where is my aggregator host config file?\n";
+my(@regexhost);
+while (<IN>) {
+        next if $_ =~ m/^(#|[\s]+).*$/;
+        @tmp = split(/\t/, $_);
+        push @regexhost, [ @tmp ];
+}
+close(IN);
+
+my $messagetype = $ARGV[0];
+my ($type, $epoch, $time, $nottype, $host, $service, $state, $email, $addl) = undef;
+
+if ($messagetype eq "HOST") {
+
+	($type, $epoch, $time, $nottype, $host, $service, $state, $email) = @ARGV;
+	# Host State
+	$state =~ s/UP/U/;
+	$state =~ s/DOWN/D/;
+	$state =~ s/UNREACHABLE/X/;
+}
+
+
+if ($messagetype eq "SERVICE") {
+	($type, $epoch, $time, $nottype, $host, $service, $state, $email, $addl) = @ARGV;
+	
+	# State
+	$state =~ s/OK/O/;
+	$state =~ s/WARNING/W/;
+	$state =~ s/CRITICAL/C/;
+	$state =~ s/UNKNOWN/?/;
+
+	# Plugin Output
+	if ($addl =~ /^.*Temp.*$/i){
+		if ($addl =~ m/\d+/){
+			my $item = (split(/temp/i, $addl))[1];
+			$state .= "\/$item"; 
+			$state =~ s/ //g;
+			$state =~ s/://g;
+		}
+	}
+}
+
+#General Regex filters
+
+# Time
+$time =~ s/:[0-9]{2}$//;
+$time =~ s/://;
+
+# Notification Type
+$nottype =~ s/^PROBLEM.*$/v/;
+$nottype =~ s/^RECOVERY.*$/^/;
+$nottype =~ s/^FLAPPINGSTART.*$/F/;
+$nottype =~ s/^FLAPPINGSTOP.*$/f/;
+$nottype =~ s/^ACKNOWLEDGEMENT.*$/A/;
+
+# Host
+#$host =~ s/lib-618p/lib/;
+#$host =~ s/svc-3024/svc/;
+#$host =~ s/apc_cool/ac/;
+$host =~ s/-[0]+//g;
+$host =~ s/-//g;
+#
+for my $i ( 0 .. $#regexhost ) {
+	my $hostsearch = $regexhost[$i][0];
+	my $hostreplace = $regexhost[$i][1];
+	$host =~ s/$hostsearch/$hostreplace/;
+}
+chomp $host;
+
+# Service
+
+for my $i ( 0 .. $#regexen ) {
+	my $svcsearch = $regexen[$i][0];
+	my $svcreplace = $regexen[$i][1];
+	$service =~ s/$svcsearch/$svcreplace/;
+}
+chomp $service;
+
+
+my $id;
+
+# Now, we shall check for message redundancy, and do an update upon match.
+my $uniq_handle = $dbh->prepare("SELECT id FROM messages WHERE not_type = '$nottype' AND host = '$host' AND service = '$service' and state = '$state'");
+my $result = $uniq_handle->execute();
+$uniq_handle->bind_columns(undef, \$id);
+while($uniq_handle->fetch()) {
+	$dbh->do("UPDATE messages SET time_t = '$epoch', time = '$time' WHERE id = '$id'");
+	#die "Redundant data, updating time, throwing out entry.\n";
+	exit;
+}
+
+# Next, we will see if we are an intermittent flap. Flapping will get sent regardless.
+if ($nottype eq "^") {
+	my $flap_handle = $dbh->prepare("SELECT id FROM messages WHERE not_type = 'v' AND host = '$host' AND service = '$service'");
+	my $result = $flap_handle->execute();
+	$flap_handle->bind_columns(undef, \$id);
+	while($flap_handle->fetch()) {
+		$dbh->do("DELETE FROM messages WHERE id = '$id'");
+        	#die "Blip Detected, removed entry.\n";
+		exit;
+	}
+}
+
+$dbh->do( "INSERT INTO messages ( time_t, not_type, time, host, service, state, email ) VALUES ( '$epoch', '$nottype', '$time', '$host', '$service', '$state', '$email' )" );
+
+my $message = "$nottype:$time:$host/$service:$state";
+print "$message\n";
+
+
+
+
+

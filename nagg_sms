@@ -1,0 +1,92 @@
+#!/usr/bin/perl -w
+#
+# Name:         nagg_sms
+#
+# Purpose:      SMS Cronjob for SMS Aggregator
+#
+# Comments:     "Because Not Everybody Has an Unlimited Data Plan"
+#               
+# Author:      Amin Astaneh (aastaneh@admin.usf.edu)
+#
+# License Information
+#
+# Copyright (C) 2009 University of South Florida
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+sub email {
+	my ($message, $email, $sender_address, $server) = @_;
+	my $smtp = Net::SMTP->new($server);
+	$smtp->mail("$sender_address");
+	$smtp->to($email);
+	$smtp->data();
+	$smtp->datasend("To: $email\n");
+        $smtp->datasend("From: $sender_address\n");
+	$smtp->datasend("Subject:\n");
+	$smtp->datasend("Content-type: text/plain\n\n$message\n");
+	$smtp->dataend();
+	$smtp->quit;
+
+}
+
+sub usage {
+	print "Usage: agg_sms.pl --sender_address=<address> --smtp_server=<server> [ --dbfile=<dbfile> ]\n";
+}
+
+use strict;
+use DBI;
+use Net::SMTP;
+use Getopt::Long;
+
+my $dbfile = "aggregator.db";
+my ($sender_address, $smtp_server) = '';
+GetOptions('dbfile=s' => \$dbfile, 'sender_address=s' => \$sender_address, 'smtp_server=s' => \$smtp_server);
+if(($sender_address eq '') || ($smtp_server eq '')) {
+	usage();
+	exit;
+}
+
+my $dbh = DBI->connect( "dbi:SQLite:$dbfile" ) || die "Cannot connect: $DBI::errstr";
+
+my ($id, $epoch, $nottype, $time, $host, $service, $state, $email) = undef;
+my @deletelist;
+my $sms = "";
+
+my $email_handle = $dbh->prepare("SELECT DISTINCT email FROM messages");
+my $result = $email_handle->execute();
+$email_handle->bind_columns(undef, \$email);
+while($email_handle->fetch()) {
+	my $query_handle = $dbh->prepare("SELECT id, time_t, not_type, time, host, service, state FROM messages WHERE email = '$email'");
+	my $result = $query_handle->execute();
+	$query_handle->bind_columns(undef, \$id, \$epoch, \$nottype, \$time, \$host, \$service, \$state);
+	while($query_handle->fetch()) {
+		push(@deletelist,$id);
+        	my $message = "$nottype:$time:$host/$service:$state\n";
+		if ((length($sms) + length($message)) > 140) {
+			email($sms, $email, $sender_address, $smtp_server);	
+                        $sms = "";	
+		}
+		$sms .= $message;
+	}
+	if(length($sms) > 0){
+		email($sms, $email, $sender_address, $smtp_server);	
+		$sms="";
+	}
+}
+
+foreach my $delid (@deletelist) {
+	$dbh->do( "DELETE FROM messages WHERE id = '$delid'" );
+}
+
