@@ -14,6 +14,7 @@ Nagg is useful when you want to minimize the SMS messages sent by Nagios in orde
 
 h3. How it Works
 
+
 h4. nagg_insert
 
 When Nagios detects an outage, it calls nagg_insert to send a notification. Instead of sending the message out immediately, nagg_insert does a few things:
@@ -23,6 +24,7 @@ When Nagios detects an outage, it calls nagg_insert to send a notification. Inst
 * If a previous notification in the database is identical to the one nagg_insert is given (except the time, of course), the time is updated and the message is not added.
 * If the message is a recovery to another stored in the database, both are deleted. This solves the common problem when a super-brief outage wakes you up at 3am.
 
+
 h4. nagg_sms
 
 Next, Cron calls nagg_sms every admin-defined period (I recommend 5 minutes). It performs the following:
@@ -30,9 +32,11 @@ Next, Cron calls nagg_sms every admin-defined period (I recommend 5 minutes). It
 * Shoves as many Nagios notifications in the same SMS message as possible 
 * Continues to send messages until the database is purged
 
+
 h4. The Result
 
 nagg on average can achieve 7 nagios notifications per SMS message, as well as ignore brief outages, which make your cell phone bill and your sleep cycle very happy.. :-)
+
 
 h3. Requirements
 
@@ -44,16 +48,22 @@ h3. Installation instructions
 
 Move the installation directory to ~nagios, and ensure permissions:
 
+<pre>
   mv nagg ~nagios/
   chown nagios:nagios ~/nagios/nagg
+</pre>
 
 In that directory, create the SQLite database:
- 
+
+<pre> 
   sqlite3 aggregator.db < nagg_schema.sql
+</pre>
 
 Add the cronjob with the proper options:
 
+<pre>
   */5 * * * * /path/to/nagg/nagg_sms --sender_address=nagios@domain.tld --smtp_server=mail.domain.tld --dbfile=/path/to/nagg/aggregator.db
+</pre>
 
 Make sure your MTA knows that your Nagios server is allowed to forward SMTP!
 
@@ -87,6 +97,7 @@ Add these notification commands to the Nagios configation, and ensure that your 
 
 h3. Configuration
 
+
 h4. nagg_svc.cfg
 
 This is a tab-delimited file that nagg_insert uses to replace service names with shortened versions. Here's an example:
@@ -101,6 +112,7 @@ This is a tab-delimited file that nagg_insert uses to replace service names with
   http    www
   ICMP    pin
 </pre>
+
 
 h4. nagg_hosts.cfg
 
@@ -122,7 +134,9 @@ h4. Test Nagios Config and Restart Daemon
   nagios -v /etc/nagios/nagios.cfg
   /etc/init.d/nagios reload
 
+
 h3. Usage
+
 
 h4. Interpreting Messages
 
