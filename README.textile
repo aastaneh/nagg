@@ -58,6 +58,7 @@ Make sure your MTA knows that your Nagios server is allowed to forward SMTP!
 
 Add these notification commands to the Nagios configation, and ensure that your contacts are configured to use them:
 
+<pre>
   define command{
           command_name    notify-service-by-aggregator
           command_line    <path to nagg>/nagg_insert SERVICE $TIMET$ $TIME$ $NOTIFICATIONTYPE$ $HOSTNAME$ $SERVICEDESC$ $SERVICESTATE$ $CONTACTPAGER$ $SERVICEOUTPUT$
@@ -81,6 +82,7 @@ Add these notification commands to the Nagios configation, and ensure that your 
         host_notification_commands      notify-host-by-aggregator
         pager                           8888675309@carrier.tld
   }
+</pre>
 
 h3. Configuration
 
@@ -88,6 +90,7 @@ h4. nagg_svc.cfg
 
 This is a tab-delimited file that nagg_insert uses to replace service names with shortened versions. Here's an example:
 
+</pre>
   # nagg_svc.cfg
   ldap    lda
   disk    dis
@@ -96,16 +99,19 @@ This is a tab-delimited file that nagg_insert uses to replace service names with
   smtp    smt
   http    www
   ICMP    pin
+</pre>
 
 h4. nagg_hosts.cfg
 
 This is a tab-delimited file that nagg_insert uses to replace hostnames with shortened versions. Here's an example:
 
+</pre>
   # nagg_hosts.cfg
   
   # If you have a bunch of hostnames with a similar prefix, you can shorten them.
   machine	mach
   switch	sw
+</pre>
 
 Remember, every little config option counts. The more that you can compress, the more messages you can send at once.
 
@@ -120,7 +126,7 @@ h3. Usage
 h4. Interpreting Messages
 
 A single Nagios notification will look like this:
-<NOTIFICATION TYPE> : <24-HOUR TIME> : <HOST/SERVICE> : <SERVICE STATUS(/OPTIONAL DATA)> 
+  <NOTIFICATION TYPE> : <24-HOUR TIME> : <HOST/SERVICE> : <SERVICE STATUS(/OPTIONAL DATA)> 
 
 The notification type makes it easy to find out whether or not a message is a problem, recovery, or flapping.
 
@@ -137,7 +143,7 @@ The service status is similar to notification type, such that we use one-charact
 |_. OK|O|
 |_. WARNING|W|
 |_. CRITICAL|C| 
-|_. UNKNOWN|?|
+|_. UNKNOWN|\?|
 |_. UP|U|
 |_. DOWN|D|
 |_. UNREACHABLE|X|
