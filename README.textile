@@ -35,9 +35,10 @@ h4. The Result
 nagg on average can achieve 7 nagios notifications per SMS message, as well as ignore brief outages, which make your cell phone bill and your sleep cycle very happy.. :-)
 
 h3. Requirements
-SQLite
-Net::SMTP
-DBD::SQLite
+
+* SQLite
+* Net::SMTP
+* DBD::SQLite
 
 h3. Installation instructions
 
@@ -126,7 +127,10 @@ h3. Usage
 h4. Interpreting Messages
 
 A single Nagios notification will look like this:
-  <NOTIFICATION TYPE> : <24-HOUR TIME> : <HOST/SERVICE> : <SERVICE STATUS(/OPTIONAL DATA)> 
+
+<pre>
+<NOTIFICATION TYPE> : <24-HOUR TIME> : <HOST/SERVICE> : <SERVICE STATUS(/OPTIONAL DATA)> 
+</pre>
 
 The notification type makes it easy to find out whether or not a message is a problem, recovery, or flapping.
 
@@ -142,7 +146,7 @@ The service status is similar to notification type, such that we use one-charact
 
 |_. OK|O|
 |_. WARNING|W|
-|_. CRITICAL|C| 
+|_. CRITICAL|C|
 |_. UNKNOWN|\?|
 |_. UP|U|
 |_. DOWN|D|
