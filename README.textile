@@ -91,7 +91,7 @@ h4. nagg_svc.cfg
 
 This is a tab-delimited file that nagg_insert uses to replace service names with shortened versions. Here's an example:
 
-</pre>
+<pre>
   # nagg_svc.cfg
   ldap    lda
   disk    dis
@@ -106,7 +106,7 @@ h4. nagg_hosts.cfg
 
 This is a tab-delimited file that nagg_insert uses to replace hostnames with shortened versions. Here's an example:
 
-</pre>
+<pre>
   # nagg_hosts.cfg
   
   # If you have a bunch of hostnames with a similar prefix, you can shorten them.
@@ -147,7 +147,7 @@ The service status is similar to notification type, such that we use one-charact
 |_. OK|O|
 |_. WARNING|W|
 |_. CRITICAL|C|
-|_. UNKNOWN|\?|
+|_. UNKNOWN|?|
 |_. UP|U|
 |_. DOWN|D|
 |_. UNREACHABLE|X|
