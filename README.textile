@@ -15,6 +15,7 @@ Nagg is useful when you want to minimize the SMS messages sent by Nagios in orde
 h3. How it Works
 
 h4. nagg_insert
+
 When Nagios detects an outage, it calls nagg_insert to send a notification. Instead of sending the message out immediately, nagg_insert does a few things:
 
 * The message is stored in a SQLite database to be read by nagg_sms (more on that later).
@@ -30,6 +31,7 @@ Next, Cron calls nagg_sms every admin-defined period (I recommend 5 minutes). It
 * Continues to send messages until the database is purged
 
 h4. The Result
+
 nagg on average can achieve 7 nagios notifications per SMS message, as well as ignore brief outages, which make your cell phone bill and your sleep cycle very happy.. :-)
 
 h3. Requirements
@@ -109,6 +111,7 @@ Remember, every little config option counts. The more that you can compress, the
 
 
 h4. Test Nagios Config and Restart Daemon
+  
   nagios -v /etc/nagios/nagios.cfg
   /etc/init.d/nagios reload
 
@@ -127,7 +130,7 @@ The notification type makes it easy to find out whether or not a message is a pr
 |_. FLAPPINGSTOP|f|
 |_. ACKNOWLEDGEMENT|A|
 
-A time (3:34 PM) will display as '''1534'''.
+A time (3:34 PM) will display as 1534.
 
 The service status is similar to notification type, such that we use one-character codes:
 
@@ -138,15 +141,5 @@ The service status is similar to notification type, such that we use one-charact
 |_. UP|U|
 |_. DOWN|D|
 |_. UNREACHABLE|X|
-
-
-h3. Next heading will obviously be H3
-
-Tables are cool when used for tabular data.
-
-|_. Name|_. Age|_. Height|
-|Tom|29|5'9"|
-|Chris|27|6'0"|
-|Jimmy|93|3'6"|
 
 Optional data is still in development. The idea is to stick a temperature reading at the end of a message, for example.
